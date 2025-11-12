@@ -1,24 +1,23 @@
 # flutter-project
 
-📱 Smart QR Scanner (Flutter / DartPad)
+💰 Expense Splitter App (Flutter / DartPad Compatible)
 
-A simple and minimal QR Scanner built using Flutter that runs directly in DartPad.  
-No installation or setup required — just open the link and scan QR codes.
+A simple and clean Flutter app that helps users split expenses among friends.
+Enter the total amount + number of people, and the app instantly calculates
+how much each person should pay.
 
 ✨ Features:
-• Live camera scanning using Flutter Web Camera API
-• Automatically detects and reads QR data
-• Shows scanned result instantly
-• Lightweight UI with Material Design
-
-🌐 Technologies Used:
-• Flutter (Dart)
-• Material Design
-• HTML Camera Access (DartPad Web Support)
+• Input total expense and number of people
+• Auto-calculates per person expense equally
+• Minimal and responsive UI
+• Runs directly in browser using DartPad — no setup required
 
 🎯 Purpose:
-Built as part of an academic Flutter project to demonstrate a working deployment
-on DartPad with GitHub integration.
+Created as part of a Flutter external examination to build and deploy a functional
+app on DartPad and push the code to GitHub.
 
-✅ Fully runnable in browser  
-✅ No emulator or IDE required  
+🌐 Tech Stack:
+• Flutter (Dart)
+• Material Design
+• Deployed on DartPad
+
