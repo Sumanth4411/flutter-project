@@ -27,3 +27,5 @@ app on DartPad and push the code to GitHub.
 • Material Design
 • Deployed on DartPad
 
+# Output: <img width="899" height="689" alt="Image" src="https://github.com/user-attachments/assets/ceab3a71-3fe2-48f3-ac9c-715091c60ace" />
+
