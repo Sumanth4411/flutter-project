@@ -1,139 +1,870 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:provider/provider.dart';
 
-void main() {
-  runApp(const ExpenseSplitterApp());
+// Enum for difficulty levels
+enum Difficulty {
+easy,
+medium,
+hard,
 }
 
-class ExpenseSplitterApp extends StatelessWidget {
-  const ExpenseSplitterApp({super.key});
+// Data Model for game settings
+class GameSettings extends ChangeNotifier {
+Difficulty _difficulty;
+Color _playerColor;
+int _previousScore; // Added to store the score from the last completed game
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Expense Splitter',
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-      ),
-      home: const ExpenseHome(),
-    );
-  }
+GameSettings()
+: _difficulty = Difficulty.medium,
+_playerColor = Colors.indigo,
+_previousScore = 0; // Initialize previous score
+
+Difficulty get difficulty => _difficulty;
+Color get playerColor => _playerColor;
+int get previousScore => _previousScore; // Getter for previous score
+
+void updateDifficulty(Difficulty newDifficulty) {
+if (_difficulty != newDifficulty) {
+_difficulty = newDifficulty;
+notifyListeners();
+}
 }
 
-class ExpenseHome extends StatefulWidget {
-  const ExpenseHome({super.key});
-
-  @override
-  State<ExpenseHome> createState() => _ExpenseHomeState();
+void updatePlayerColor(Color newColor) {
+if (_playerColor != newColor) {
+_playerColor = newColor;
+notifyListeners();
+}
 }
 
-class _ExpenseHomeState extends State<ExpenseHome> {
-  final TextEditingController billController = TextEditingController();
-  final TextEditingController peopleController = TextEditingController();
-
-  double amountPerPerson = 0;
-
-  void calculateSplit() {
-    final bill = double.tryParse(billController.text) ?? 0;
-    final people = int.tryParse(peopleController.text) ?? 1;
-
-    setState(() {
-      amountPerPerson = bill / people;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade200,
-      appBar: AppBar(
-        title: const Text("Expense Splitter"),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: SingleChildScrollView(     // ✅ FIX ADDED HERE
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Card(
-              elevation: 10,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(25),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      "Split Your Bill 💸",
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 30),
-
-                    TextField(
-                      controller: billController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: "Total Bill Amount",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.currency_rupee),
-                      ),
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    TextField(
-                      controller: peopleController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: "Number of People",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.people),
-                      ),
-                    ),
-
-                    const SizedBox(height: 25),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: calculateSplit,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text(
-                          "Split Expense",
-                          style: TextStyle(fontSize: 18),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 25),
-
-                    Text(
-                      "Each person pays:",
-                      style: TextStyle(fontSize: 18, color: Colors.grey.shade700),
-                    ),
-
-                    Text(
-                      "₹${amountPerPerson.toStringAsFixed(2)}",
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+// Method to update the previous score
+void setPreviousScore(int newScore) {
+if (_previousScore != newScore) {
+_previousScore = newScore;
+notifyListeners();
+}
+}
 }
 
+void main() => runApp(const RunnerApp());
+
+class RunnerApp extends StatelessWidget {
+const RunnerApp({super.key});
+
+@override
+Widget build(BuildContext context) {
+return ChangeNotifierProvider<GameSettings>(
+create: (BuildContext context) => GameSettings(),
+builder: (BuildContext context, Widget? child) {
+return MaterialApp(
+title: 'Mini Runner Game',
+debugShowCheckedModeBanner: false,
+theme: ThemeData(
+primarySwatch: Colors.blue,
+visualDensity: VisualDensity.adaptivePlatformDensity,
+appBarTheme: const AppBarTheme(
+backgroundColor: Colors.blueAccent,
+foregroundColor: Colors.white,
+titleTextStyle: TextStyle(
+fontSize: 22,
+fontWeight: FontWeight.bold,
+color: Colors.white,
+),
+),
+elevatedButtonTheme: ElevatedButtonThemeData(
+style: ElevatedButton.styleFrom(
+minimumSize: const Size(80, 48), // Consistent button size
+textStyle:
+const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+padding: const EdgeInsets.symmetric(horizontal: 16),
+),
+),
+),
+home: const RunnerHome(),
+);
+},
+);
+}
+}
+
+class RunnerHome extends StatefulWidget {
+const RunnerHome({super.key});
+
+@override
+State<RunnerHome> createState() => _RunnerHomeState();
+}
+
+class Obstacle {
+int lane;
+double y; // 0..1 normalized vertical position (0 top, 1 bottom)
+Obstacle({required this.lane, required this.y});
+}
+
+class _RunnerHomeState extends State<RunnerHome> with TickerProviderStateMixin {
+static const int laneCount = 3;
+final Random rng = Random();
+
+// Player state
+int playerLane = 1; // middle lane
+double playerJump = 0.0; // 0 = ground, >0 = in air
+double jumpVelocity = 0.0;
+final double gravity = 0.012;
+final double jumpForce = 0.28;
+
+// Obstacles
+final List<Obstacle> obstacles = <Obstacle>[];
+double spawnTimer = 0.0;
+double spawnInterval = 1.2; // seconds
+double gameSpeed = 0.45; // how fast obstacles move (higher = faster)
+int score = 0;
+bool playing = false;
+bool isGamePaused = false;
+Timer? gameLoop;
+
+// UI sizing
+static const double trackPadding = 24.0;
+
+@override
+void initState() {
+super.initState();
+resetGame();
+}
+
+@override
+void didChangeDependencies() {
+super.didChangeDependencies();
+// Update game parameters when settings change, or on initial load
+_applyDifficultySettings(context.watch<GameSettings>().difficulty);
+}
+
+void _applyDifficultySettings(Difficulty difficulty) {
+switch (difficulty) {
+case Difficulty.easy:
+spawnInterval = 1.6;
+gameSpeed = 0.35;
+break;
+case Difficulty.medium:
+spawnInterval = 1.2;
+gameSpeed = 0.45;
+break;
+case Difficulty.hard:
+spawnInterval = 0.8;
+gameSpeed = 0.60;
+break;
+}
+}
+
+void resetGame() {
+gameLoop?.cancel();
+obstacles.clear();
+playerLane = 1;
+playerJump = 0.0;
+jumpVelocity = 0.0;
+spawnTimer = 0.0;
+score = 0;
+playing = false;
+isGamePaused = false;
+_applyDifficultySettings(
+context.read<GameSettings>().difficulty); // Apply current settings
+setState(() {});
+}
+
+void startGame() {
+if (playing && !isGamePaused) return; // Already playing and not paused
+if (playing && isGamePaused) {
+resumeGame();
+return;
+}
+
+playing = true;
+isGamePaused = false;
+// initial obstacles
+obstacles.clear();
+for (int i = 0; i < 2; i++) {
+obstacles.add(Obstacle(lane: rng.nextInt(laneCount), y: -i * 0.5 - 0.7));
+}
+
+final int fps = 60;
+final double dt = 1 / fps;
+gameLoop = Timer.periodic(Duration(milliseconds: (dt * 1000).toInt()),
+(Timer _) {
+updateGame(dt);
+});
+setState(() {}); // Update UI to reflect 'playing' state
+}
+
+void pauseGame() {
+if (!playing || isGamePaused) return;
+gameLoop?.cancel();
+isGamePaused = true;
+setState(() {});
+}
+
+void resumeGame() {
+if (!playing || !isGamePaused) return;
+isGamePaused = false;
+final int fps = 60;
+final double dt = 1 / fps;
+gameLoop = Timer.periodic(Duration(milliseconds: (dt * 1000).toInt()),
+(Timer _) {
+updateGame(dt);
+});
+setState(() {});
+}
+
+void updateGame(double dt) {
+if (!playing || isGamePaused) return;
+
+// update jump physics
+if (playerJump > 0 || jumpVelocity != 0) {
+jumpVelocity += gravity;
+playerJump -= jumpVelocity;
+if (playerJump <= 0) {
+playerJump = 0;
+jumpVelocity = 0;
+}
+}
+
+// move obstacles downward (increase y)
+for (Obstacle ob in obstacles) {
+ob.y += gameSpeed * dt;
+}
+
+// spawn new obstacles
+spawnTimer += dt;
+if (spawnTimer >= spawnInterval) {
+spawnTimer = 0;
+// space next obstacle a bit and ensure not impossible
+final int lane = rng.nextInt(laneCount);
+obstacles.add(Obstacle(lane: lane, y: -0.4));
+// increase difficulty slowly, based on initial difficulty
+final Difficulty currentDifficulty =
+context.read<GameSettings>().difficulty;
+if (currentDifficulty == Difficulty.easy) {
+if (spawnInterval > 1.0) spawnInterval -= 0.01;
+if (gameSpeed < 0.8) gameSpeed += 0.005;
+} else if (currentDifficulty == Difficulty.medium) {
+if (spawnInterval > 0.6) spawnInterval -= 0.02;
+if (gameSpeed < 1.6) gameSpeed += 0.01;
+} else if (currentDifficulty == Difficulty.hard) {
+if (spawnInterval > 0.4) spawnInterval -= 0.03;
+if (gameSpeed < 2.2) gameSpeed += 0.015;
+}
+}
+
+// remove obstacles that passed bottom and increase score
+obstacles.removeWhere((Obstacle ob) {
+if (ob.y > 1.25) {
+score += 5;
+return true;
+}
+return false;
+});
+
+// collision detection: player is at y ~ 0.9 (bottom). If obstacle y near player and same lane and playerJump small => collision
+for (Obstacle ob in obstacles) {
+if (ob.lane == playerLane) {
+if (ob.y > 0.72 && ob.y < 0.96) {
+if (playerJump < 0.28) {
+// collision
+endGame();
+return;
+}
+}
+}
+}
+
+setState(() {});
+}
+
+void endGame() {
+gameLoop?.cancel();
+playing = false;
+isGamePaused = false;
+
+// Save the current score as the previous score
+context.read<GameSettings>().setPreviousScore(score);
+final int currentScore = score; // Capture score for dialog
+final int previousScore =
+context.read<GameSettings>().previousScore; // Use the newly set previous score
+
+Future<void>.delayed(const Duration(milliseconds: 100), () {
+showDialog<void>(
+context: context,
+barrierDismissible: false,
+builder: (BuildContext c) => AlertDialog(
+title: const Text('Game Over!'),
+content: Column(
+mainAxisSize: MainAxisSize.min,
+crossAxisAlignment: CrossAxisAlignment.start,
+children: <Widget>[
+Text('Your score: $currentScore'),
+Text('Previous score: $previousScore'),
+],
+),
+actions: <Widget>[
+TextButton(
+onPressed: () {
+Navigator.pop(c);
+resetGame();
+},
+child: const Text('Exit'),
+),
+TextButton(
+onPressed: () {
+Navigator.pop(c);
+resetGame();
+startGame();
+},
+child: const Text('Restart'),
+),
+],
+),
+);
+});
+}
+
+void moveLeft() {
+if (!playing || isGamePaused) return;
+if (playerLane > 0) {
+setState(() => playerLane--);
+}
+}
+
+void moveRight() {
+if (!playing || isGamePaused) return;
+if (playerLane < laneCount - 1) {
+setState(() => playerLane++);
+}
+}
+
+void jump() {
+if (!playing || isGamePaused) return;
+if (playerJump <= 0) {
+jumpVelocity = -jumpForce;
+playerJump = 0.0001; // start jump
+}
+}
+
+// simple helper to position lanes
+double laneX(int laneIndex, double width) {
+final double laneWidth = (width - trackPadding * 2) / laneCount;
+final double left = trackPadding + laneIndex * laneWidth + laneWidth / 2;
+return left;
+}
+
+@override
+void dispose() {
+gameLoop?.cancel();
+super.dispose();
+}
+
+@override
+Widget build(BuildContext context) {
+final Size size = MediaQuery.of(context).size;
+final double boardHeight = size.height * 0.65;
+final double laneWidth = (size.width - trackPadding * 2) / laneCount;
+final double playerBottom = boardHeight * 0.88; // y pixel where player stands
+final double jumpPixel =
+playerJump * boardHeight * 0.6; // translate normalized jump to pixels
+
+final Color playerColor = context.watch<GameSettings>().playerColor;
+final int previousScore =
+context.watch<GameSettings>().previousScore; // Watch previous score
+
+return Scaffold(
+appBar: AppBar(
+title: const Text('Mini Runner'),
+centerTitle: true,
+actions: <Widget>[
+IconButton(
+icon: Icon(isGamePaused ? Icons.play_arrow : Icons.pause),
+onPressed: () {
+if (playing) {
+if (isGamePaused) {
+resumeGame();
+} else {
+pauseGame();
+}
+}
+},
+tooltip: isGamePaused ? 'Resume Game' : 'Pause Game',
+),
+IconButton(
+icon: const Icon(Icons.help_outline),
+onPressed: () {
+if (playing && !isGamePaused) {
+pauseGame(); // Pause game when navigating
+}
+Navigator.push(
+context,
+MaterialPageRoute<void>(
+builder: (BuildContext context) => const HowToPlayScreen()),
+);
+},
+tooltip: 'How to Play',
+),
+IconButton(
+icon: const Icon(Icons.settings),
+onPressed: () {
+if (playing && !isGamePaused) {
+pauseGame(); // Pause game when navigating to settings
+}
+Navigator.push(
+context,
+MaterialPageRoute<void>(
+builder: (BuildContext context) => const SettingsScreen()),
+);
+},
+tooltip: 'Game Settings',
+),
+Padding(
+padding: const EdgeInsets.symmetric(horizontal: 12),
+child: Column(
+mainAxisAlignment: MainAxisAlignment.center,
+crossAxisAlignment: CrossAxisAlignment.end,
+children: <Widget>[
+Text('Score: $score'),
+Text(
+'Prev: $previousScore',
+style: const TextStyle(fontSize: 12, color: Colors.white70),
+),
+],
+),
+)
+],
+),
+body: SafeArea(
+child: Column(
+children: <Widget>[
+const SizedBox(height: 8),
+Center(
+child: Listener(
+onPointerDown: (PointerDownEvent details) {
+if (!playing) {
+startGame();
+} else if (playing && isGamePaused) {
+resumeGame();
+} else {
+if (details.kind == PointerDeviceKind.mouse) {
+if (details.buttons == kPrimaryMouseButton) {
+moveLeft();
+} else if (details.buttons == kSecondaryMouseButton) {
+moveRight();
+}
+} else {
+jump();
+}
+}
+},
+child: Container(
+width: size.width * 0.98,
+height: boardHeight,
+margin: const EdgeInsets.symmetric(horizontal: 4),
+decoration: BoxDecoration(
+color: Colors.grey.shade100,
+borderRadius: BorderRadius.circular(16),
+boxShadow: const <BoxShadow>[
+BoxShadow(color: Colors.black12, blurRadius: 6)
+],
+),
+child: Stack(
+children: <Widget>[
+// tracks background
+for (int i = 0; i < laneCount; i++)
+Positioned(
+left: trackPadding + i * laneWidth,
+top: 0,
+width: laneWidth,
+height: boardHeight,
+child: Container(
+decoration: BoxDecoration(
+border: Border(
+right: BorderSide(
+color: i < laneCount - 1
+? Colors.grey.shade300
+: Colors.transparent,
+width: 1,
+),
+),
+),
+),
+),
+
+// obstacles
+for (int i = 0; i < obstacles.length; i++)
+ObstacleWidget(
+obstacle: obstacles[i],
+screenWidth: size.width,
+boardHeight: boardHeight,
+laneWidth: laneWidth,
+laneX: laneX,
+),
+
+// player
+Positioned(
+left: laneX(playerLane, size.width) - 30,
+top: playerBottom - 50 - jumpPixel,
+width: 60,
+height: 60,
+child: PlayerWidget(playerColor: playerColor),
+),
+
+// ground shadow
+Positioned(
+left: 0,
+right: 0,
+bottom: 0,
+height: 10,
+child: Container(color: Colors.grey.shade200),
+),
+
+// overlay message
+if (!playing || isGamePaused)
+Positioned.fill(
+child: Container(
+alignment: Alignment.center,
+decoration: BoxDecoration(
+color: Colors.black.withAlpha((255 * 0.4).round()),
+borderRadius: BorderRadius.circular(16),
+),
+child: Column(
+mainAxisSize: MainAxisSize.min,
+children: <Widget>[
+Icon(
+(!playing && !isGamePaused)
+? Icons.play_circle_filled
+: (isGamePaused
+? Icons.pause_circle_filled
+: Icons.directions_run),
+size: 80,
+color: Colors.white70),
+const SizedBox(height: 10),
+Text(
+(!playing && !isGamePaused)
+? 'TAP to START'
+: (isGamePaused
+? 'GAME PAUSED'
+: 'TAP to START'),
+style: const TextStyle(
+color: Colors.white,
+fontSize: 18,
+fontWeight: FontWeight.bold),
+),
+],
+),
+),
+),
+],
+),
+),
+),
+),
+
+const SizedBox(height: 12),
+
+// Controls
+Padding(
+padding: const EdgeInsets.symmetric(horizontal: 12.0),
+child: Row(
+mainAxisAlignment: MainAxisAlignment.spaceBetween,
+children: <Widget>[
+// left + jump + right
+Row(
+children: <Widget>[
+ElevatedButton(
+onPressed: moveLeft,
+child: const Icon(Icons.arrow_left),
+),
+const SizedBox(width: 12),
+ElevatedButton(
+onPressed: jump,
+child: const Icon(Icons.arrow_upward),
+),
+const SizedBox(width: 12),
+ElevatedButton(
+onPressed: moveRight,
+child: const Icon(Icons.arrow_right),
+),
+],
+),
+
+// start / restart
+Row(
+children: <Widget>[
+ElevatedButton(
+onPressed: (!playing || isGamePaused) ? startGame : null,
+child: Text(
+playing ? (isGamePaused ? 'RESUME' : 'PAUSED') : 'START'),
+),
+const SizedBox(width: 8),
+ElevatedButton(
+onPressed: resetGame,
+style: ElevatedButton.styleFrom(
+backgroundColor: Colors.redAccent.shade400,
+foregroundColor: Colors.white),
+child: const Text('RESET'),
+),
+],
+)
+],
+),
+),
+const Spacer(),
+Text(
+'Current Difficulty: ${context.watch<GameSettings>().difficulty.name.toUpperCase()}',
+style: const TextStyle(fontSize: 14, color: Colors.grey)),
+const SizedBox(height: 8),
+],
+),
+),
+);
+}
+}
+
+class PlayerWidget extends StatelessWidget {
+final Color playerColor;
+const PlayerWidget({super.key, required this.playerColor});
+
+@override
+Widget build(BuildContext context) {
+return Container(
+decoration: BoxDecoration(
+color: playerColor,
+borderRadius: BorderRadius.circular(12),
+boxShadow: const <BoxShadow>[
+BoxShadow(color: Colors.black26, blurRadius: 6)
+],
+),
+child: Center(
+child: Text(
+'YOU',
+style: TextStyle(
+color: Colors.white.withAlpha((255 * 0.95).round()),
+fontWeight: FontWeight.bold),
+),
+),
+);
+}
+}
+
+class ObstacleWidget extends StatelessWidget {
+final Obstacle obstacle;
+final double screenWidth;
+final double boardHeight;
+final double laneWidth;
+final double Function(int, double) laneX; // Function to get lane's x position
+
+const ObstacleWidget({
+super.key,
+required this.obstacle,
+required this.screenWidth,
+required this.boardHeight,
+required this.laneWidth,
+required this.laneX,
+});
+
+@override
+Widget build(BuildContext context) {
+final double leftCenter = laneX(obstacle.lane, screenWidth);
+// Convert ob.y (normalized) to pixel Y within board:
+final double pixelY = (obstacle.y.clamp(-1.0, 1.5)) * boardHeight;
+// obstacle size
+final double obsWidth = laneWidth * 0.6;
+final double obsHeight = 48.0;
+
+return Positioned(
+left: leftCenter - obsWidth / 2,
+top: pixelY,
+width: obsWidth,
+height: obsHeight,
+child: Container(
+decoration: BoxDecoration(
+color: Colors.orange.shade700,
+borderRadius: BorderRadius.circular(8),
+boxShadow: const <BoxShadow>[
+BoxShadow(color: Colors.black26, blurRadius: 4)
+],
+),
+child: Center(
+child: Text(
+'OB',
+style: TextStyle(
+color: Colors.white.withAlpha((255 * 0.9).round()),
+fontWeight: FontWeight.bold),
+),
+),
+),
+);
+}
+}
+
+class HowToPlayContent extends StatelessWidget {
+const HowToPlayContent({super.key});
+
+@override
+Widget build(BuildContext context) {
+return Padding(
+padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+child: Column(
+crossAxisAlignment: CrossAxisAlignment.start,
+children: <Widget>[
+Text('Goal: Avoid obstacles and get the highest score!',
+style: Theme.of(context).textTheme.titleMedium),
+const SizedBox(height: 8),
+const Text('Controls:'),
+const Text(' - TAP (mobile) / Primary Mouse Click (desktop): Jump'),
+const Text(
+' - Left Arrow Button / Secondary Mouse Click (desktop): Move Left'),
+const Text(' - Right Arrow Button: Move Right'),
+const Text(' - Pause Button: Stop the game temporarily.'),
+const Text(' - Start/Resume Button: Begin or continue the game.'),
+const Text(' - Reset Button: Start a new game.'),
+const SizedBox(height: 8),
+const Text(
+'Difficulty: Adjust in settings to change game speed and obstacle frequency.'),
+],
+),
+);
+}
+}
+
+class HowToPlayScreen extends StatelessWidget {
+const HowToPlayScreen({super.key});
+
+@override
+Widget build(BuildContext context) {
+return Scaffold(
+appBar: AppBar(
+title: const Text('How to Play'),
+),
+body: const SingleChildScrollView(
+padding: EdgeInsets.all(16.0),
+child: HowToPlayContent(),
+),
+);
+}
+}
+
+class SettingsScreen extends StatelessWidget {
+const SettingsScreen({super.key});
+
+@override
+Widget build(BuildContext context) {
+return Scaffold(
+appBar: AppBar(
+title: const Text('Game Settings'),
+),
+body: SingleChildScrollView(
+padding: const EdgeInsets.all(16.0),
+child: Column(
+crossAxisAlignment: CrossAxisAlignment.start,
+children: <Widget>[
+Text(
+'Difficulty Level',
+style: Theme.of(context).textTheme.titleLarge,
+),
+const SizedBox(height: 10),
+Container(
+padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+decoration: BoxDecoration(
+color: Colors.grey.shade200,
+borderRadius: BorderRadius.circular(8),
+),
+child: DropdownButtonHideUnderline(
+child: DropdownButton<Difficulty>(
+value: context.watch<GameSettings>().difficulty,
+isExpanded: true,
+icon: const Icon(Icons.arrow_drop_down),
+items: Difficulty.values
+.map<DropdownMenuItem<Difficulty>>((Difficulty value) {
+return DropdownMenuItem<Difficulty>(
+value: value,
+child: Text(value.name.toUpperCase()),
+);
+}).toList(),
+onChanged: (Difficulty? newValue) {
+if (newValue != null) {
+context.read<GameSettings>().updateDifficulty(newValue);
+}
+},
+),
+),
+),
+const SizedBox(height: 24),
+Text(
+'Player Color',
+style: Theme.of(context).textTheme.titleLarge,
+),
+const SizedBox(height: 10),
+const _PlayerColorSelector(),
+const SizedBox(height: 24),
+ExpansionTile(
+title:
+Text('How to Play', style: Theme.of(context).textTheme.titleLarge),
+leading: const Icon(Icons.help_outline),
+children: const <Widget>[
+HowToPlayContent(),
+],
+),
+],
+),
+),
+);
+}
+}
+
+class _PlayerColorSelector extends StatelessWidget {
+final List<Color> availableColors = const <Color>[
+Colors.indigo,
+Colors.deepOrange,
+Colors.green,
+Colors.purple,
+Colors.teal,
+];
+
+const _PlayerColorSelector();
+
+@override
+Widget build(BuildContext context) {
+final Color currentColor = context.watch<GameSettings>().playerColor;
+
+return Wrap(
+spacing: 10.0,
+runSpacing: 10.0,
+children: availableColors.map<Widget>((Color color) {
+return GestureDetector(
+onTap: () {
+context.read<GameSettings>().updatePlayerColor(color);
+},
+child: Container(
+width: 50,
+height: 50,
+decoration: BoxDecoration(
+color: color,
+shape: BoxShape.circle,
+border: Border.all(
+color:
+currentColor == color ? Colors.blueAccent : Colors.transparent,
+width: 3,
+),
+boxShadow: currentColor == color
+? <BoxShadow>[
+BoxShadow(
+color: color.withAlpha((255 * 0.6).round()),
+blurRadius: 8)
+]
+: null,
+),
+child: currentColor == color
+? const Icon(Icons.check, color: Colors.white)
+: null,
+),
+);
+}).toList(),
+);
+}
+}
